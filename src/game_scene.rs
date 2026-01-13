@@ -4,7 +4,7 @@
 
 use raylib::prelude::*;
 
-use crate::menu_scene::WinScene;
+use crate::menu_scene::{WinScene, PauseScene};
 use crate::scenes::{Scene, SceneSwitch};
 use crate::game_data::GameData;
 use crate::utils::*;
@@ -37,6 +37,10 @@ impl Scene for GameScene {
     }
 
     fn handle_input(&mut self, _rl: &mut RaylibHandle, _data: &mut GameData) -> SceneSwitch {
+
+        if _rl.is_key_pressed(KeyboardKey::KEY_P) {
+            return SceneSwitch::Push(Box::new(PauseScene));
+        }
         
         // set the intention to move in the given direction.
         let mut direction = Vector2::zero();
@@ -86,7 +90,7 @@ impl Scene for GameScene {
             } 
         } else {
             println!("Deal with win condition, send new scene");
-            return SceneSwitch::Push(Box::new(WinScene));
+            return SceneSwitch::Replace(Box::new(WinScene));
         }
 
 
