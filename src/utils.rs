@@ -17,3 +17,4 @@ pub fn random_point(width: i32, height: i32) -> Vector2 {
 
     Vector2{x: x as f32, y: y as f32}
 }
+
