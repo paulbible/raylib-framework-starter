@@ -4,7 +4,7 @@
 
 use raylib::prelude::*;
 
-use crate::menu_scene::WinScene;
+use crate::menu_scene::{WinScene, PauseScene};
 use crate::scenes::{Scene, SceneSwitch};
 use crate::game_data::GameData;
 use crate::utils::*;
@@ -63,6 +63,9 @@ impl Scene for GameScene {
         {
             direction += Vector2::new(0.0, 1.0);
         }
+        if _rl.is_key_pressed(KeyboardKey::KEY_P) {
+            return SceneSwitch::Push(Box::new(PauseScene));
+        }
 
         direction.normalize();
 
@@ -86,7 +89,7 @@ impl Scene for GameScene {
             } 
         } else {
             println!("Deal with win condition, send new scene");
-            return SceneSwitch::Push(Box::new(WinScene));
+            return SceneSwitch::Replace(Box::new(WinScene));
         }
 
 

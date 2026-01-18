@@ -1,8 +1,8 @@
-# Rust Raylib Framework starter
-This is a simple game framework for Raylib using Rust. The design was developed in coordination with ChatGPT 5.2. See the file "game_architecture_rust.pdf" for details.
+# Rust Raylib Dungeon Diver
+This is a simple game framework for Raylib using Rust. The design was developed by Bao Le. Map made by Khangai Enkhbat, with the tool map created by ChatGPT.
 
 ## Features
-- Separates player data from scenes.
-- Shows how Traits can be used for flexible scene switching.
-- Separates scenes into their own logical modules reducing coupling.
+- A maze + dungeon/labyrinth diver game.
+- featuring 2 types of monster (Tank and Shooter).
+- Win the game by finding your way out of the maze.
 
