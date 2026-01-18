@@ -6,7 +6,27 @@ use crate::game_data::GameData;
 use crate::{is_floor_tile, is_wall_tile};
 use std::fs::File;
 use std::io::Read;
+use std::env;
+use std::path::Path;
 use serde::Deserialize;
+
+/// Resolve asset path by trying multiple relative path options
+fn resolve_asset_path(path: &str) -> String {
+    let paths_to_try = vec![
+        path.to_string(),
+        format!("../{}", path),
+        format!("../../{}", path),
+    ];
+    
+    for try_path in &paths_to_try {
+        if Path::new(try_path).exists() {
+            return try_path.clone();
+        }
+    }
+    
+    // If none found, return original path
+    path.to_string()
+}
 
 #[derive(Deserialize)]
 pub struct MapData {
@@ -26,10 +46,24 @@ pub struct MapEntity {
 
 
 pub fn load_map(path: &str) -> MapData {
-    let mut file = File::open(path).expect("Failed to open map.json");
+    let resolved_path = resolve_asset_path(path);
+    
+    let mut file = File::open(&resolved_path)
+        .unwrap_or_else(|e| {
+            let current_dir = env::current_dir().unwrap_or_default();
+            panic!("Failed to open map file at '{}' (resolved from '{}'): {}. Current working directory: {:?}", 
+                   resolved_path, path, e, current_dir);
+        });
+    
     let mut contents = String::new();
-    file.read_to_string(&mut contents).unwrap();
-    serde_json::from_str(&contents).expect("Invalid map.json")
+    file.read_to_string(&mut contents)
+        .unwrap_or_else(|e| {
+            panic!("Failed to read map file '{}': {}", resolved_path, e);
+        });
+    serde_json::from_str(&contents)
+        .unwrap_or_else(|e| {
+            panic!("Failed to parse map JSON from '{}': {}", resolved_path, e);
+        })
 }
 
 pub struct MazeScene {
@@ -55,7 +89,7 @@ pub struct MazeScene {
     queued_move: Option<(usize, usize)>,
     
     // Gamepad input tracking
-    last_gamepad_direction: Option<(i32, i32)>, // (x_dir, y_dir) - tracks last discrete direction
+    last_gamepad_direction: Option<(i32, i32)>, 
 }
 
 
@@ -203,9 +237,14 @@ impl Scene for MazeScene {
 
         // Load texture using the thread from GameData
         if let Some(ref thread) = data.thread {
+            let texture_path = resolve_asset_path("assets/tileset0.png");
             self.tileset = Some(
-                rl.load_texture(thread, "assets/tileset0.png")
-                    .expect("Failed to load tileset")
+                rl.load_texture(thread, &texture_path)
+                    .unwrap_or_else(|e| {
+                        let current_dir = env::current_dir().unwrap_or_default();
+                        panic!("Failed to load tileset at '{}' (resolved from 'assets/tileset0.png'): {:?}. Current working directory: {:?}", 
+                               texture_path, e, current_dir);
+                    })
             );
         }
 
@@ -273,6 +312,30 @@ impl Scene for MazeScene {
             // ===== GAMEPAD INPUT =====
             // Check if gamepad is available
             if rl.is_gamepad_available(0) {
+                // ===== D-PAD INPUT =====
+                // D-pad buttons provide discrete directional input
+                if rl.is_gamepad_button_down(0, GamepadButton::GAMEPAD_BUTTON_LEFT_FACE_RIGHT) {
+                    // D-pad right
+                    new_x = new_x.saturating_add(1).min(self.map.grid_w.saturating_sub(1));
+                    movement_queued = true;
+                }
+                if rl.is_gamepad_button_down(0, GamepadButton::GAMEPAD_BUTTON_LEFT_FACE_LEFT) {
+                    // D-pad left
+                    new_x = new_x.saturating_sub(1);
+                    movement_queued = true;
+                }
+                if rl.is_gamepad_button_down(0, GamepadButton::GAMEPAD_BUTTON_LEFT_FACE_DOWN) {
+                    // D-pad down
+                    new_y = new_y.saturating_add(1).min(self.map.grid_h.saturating_sub(1));
+                    movement_queued = true;
+                }
+                if rl.is_gamepad_button_down(0, GamepadButton::GAMEPAD_BUTTON_LEFT_FACE_UP) {
+                    // D-pad up
+                    new_y = new_y.saturating_sub(1);
+                    movement_queued = true;
+                }
+                
+                // ===== ANALOG STICK INPUT =====
                 let x_axis = rl.get_gamepad_axis_movement(0, GamepadAxis::GAMEPAD_AXIS_LEFT_X);
                 let y_axis = rl.get_gamepad_axis_movement(0, GamepadAxis::GAMEPAD_AXIS_LEFT_Y);
                 
@@ -286,7 +349,7 @@ impl Scene for MazeScene {
                 let abs_y = y_axis.abs();
                 
                 if abs_x > deadzone || abs_y > deadzone {
-                    // Determine which direction to move (prioritize stronger axis)
+                    // Determine which direction to move
                     let mut gamepad_x_dir = 0;
                     let mut gamepad_y_dir = 0;
                     
@@ -306,7 +369,7 @@ impl Scene for MazeScene {
                         }
                     }
                     
-                    // Apply gamepad movement (works like keyboard - queues every frame when stick is pushed)
+                    // Apply gamepad movement
                     if gamepad_x_dir != 0 {
                         new_x = if gamepad_x_dir > 0 {
                             new_x.saturating_add(1).min(self.map.grid_w.saturating_sub(1))
@@ -343,7 +406,6 @@ impl Scene for MazeScene {
         self.update_camera(data);
         
         // Tick-based game logic
-        // Accumulate time until we reach tick_rate, then process one game tick
         self.tick_timer += dt;
         
         // Process game tick when timer exceeds tick_rate
