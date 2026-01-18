@@ -95,12 +95,12 @@ impl Scene for WinScene {
         
         if _rl.is_mouse_button_pressed(MouseButton::MOUSE_BUTTON_LEFT) {
             let click = _rl.get_mouse_position();
-            let rectangle = Rectangle::new(200.0, 200.0, 300.0, 150.0);
-            if  check_collision_point_rect(&click, &rectangle) {
-                println!("click");
-                // close the program
+            // Button rectangle for "Back to Menu" 
+            let button_rect = Rectangle::new(450.0, 550.0, 300.0, 60.0);
+            if check_collision_point_rect(&click, &button_rect) {
+                println!("Back to menu clicked");
+                // Pop WinScene to return to MenuScene
                 return SceneSwitch::Pop;
-                //return SceneSwitch::Quit;
             }
         }
         
@@ -112,14 +112,30 @@ impl Scene for WinScene {
 
     }
 
-    fn draw(&self, d: &mut RaylibDrawHandle, _data: &mut GameData) {
+    fn draw(&self, d: &mut RaylibDrawHandle, data: &mut GameData) {
         d.clear_background(Color::WHITE);
         
-        d.draw_rectangle(200, 200, 300, 150, Color::GREEN);
-        d.draw_text("Win", 210, 205, 20, Color::BLACK);
-        let message = format!("Final score: {}", _data.points);
-        d.draw_text(message.as_str(), 210, 225, 20, Color::BLACK);
-        d.draw_text("Click to quit.", 210, 250, 20, Color::BEIGE);
+        // Title
+        d.draw_text("Level Complete!", 400, 300, 50, Color::BLACK);
+        
+        // Score display
+        let score_message = format!("Final Score: {}", data.points);
+        d.draw_text(score_message.as_str(), 500, 400, 30, Color::BLACK);
+        
+        // Time display
+        if let Some(elapsed) = data.get_elapsed_time() {
+            let minutes = (elapsed as u32) / 60;
+            let seconds = (elapsed as u32) % 60;
+            let milliseconds = ((elapsed % 1.0) * 100.0) as u32;
+            let time_message = format!("Time: {:02}:{:02}.{:02}", minutes, seconds, milliseconds);
+            d.draw_text(time_message.as_str(), 500, 450, 30, Color::BLACK);
+        } else {
+            d.draw_text("Time: --:--", 500, 450, 30, Color::GRAY);
+        }
+        
+        // Back to Menu button
+        d.draw_rectangle(450, 550, 300, 60, Color::GREEN);
+        d.draw_text("Back to Menu", 515, 570, 25, Color::WHITE);
     }
 
     fn on_exit(&mut self, _rl: &mut RaylibHandle, _data: &mut GameData) {}
